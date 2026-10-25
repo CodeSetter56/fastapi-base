@@ -23,12 +23,6 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    # OAuth2
-    google_client_id: str | None = None
-    google_client_secret: str | None = None
-    github_client_id: str | None = None
-    github_client_secret: str | None = None
-
     # Cookies
     cookie_secure: bool = False  # Set to True in production (HTTPS)
     cookie_samesite: str | None = "lax"  # lax | strict | none
