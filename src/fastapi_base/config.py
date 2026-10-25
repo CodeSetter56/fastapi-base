@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     )
 
     # JWT
-    jwt_secret: str = Field(validation_alias="JWT_SECRET")
+    jwt_secret: str = Field(
+        default="dev-secret-key-change-in-production",
+        validation_alias="JWT_SECRET",
+    )
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7

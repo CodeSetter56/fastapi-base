@@ -1,9 +1,10 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import desc, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from ..models import User, UserRole
 from ..schemas.user import UserUpdate
@@ -18,7 +19,7 @@ async def list_users(
     total = await db.scalar(select(func.count()).select_from(User)) or 0
     result = await db.execute(
         select(User)
-        .order_by(desc("created_at"))
+        .order_by(col(User.id))
         .limit(limit)
         .offset(offset)
     )

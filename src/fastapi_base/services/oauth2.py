@@ -1,8 +1,9 @@
+import secrets
 from urllib.parse import urlencode
 
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.starlette_client import OAuth
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -50,16 +51,18 @@ async def _get_or_create_user_from_oauth(
     Look for a user by email. If not found, create a new one.
     If found but authenticated via a different provider, we still allow login (we don't track provider).
     """
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
     result = await db.execute(select(User).filter_by(email=email))
     user = result.scalar_one_or_none()
     if user is None:
         # Bootstrap: if no users exist, make this user admin.
-        user_count = await db.scalar(select(User)) or 0
+        user_count = await db.scalar(select(func.count()).select_from(User)) or 0
+        # Generate a secure random password for OAuth users (unusable, but set for consistency)
+        random_password = secrets.token_urlsafe(32)
         user = User(
             email=email,
-            password_hash=hash_password("oauth2_" + urlencode({"provider": provider})),  # unusable password
+            password_hash=hash_password(random_password),  # unusable password
             role=UserRole.admin.value if user_count == 0 else UserRole.user.value,
             is_active=True,
         )

@@ -56,7 +56,18 @@ async def login(
     result = await db.execute(select(User).filter_by(email=str(payload.email)))
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(payload.password, user.password_hash):
+    # Always verify password to mitigate timing attacks (use dummy hash if user not found)
+    if user is None:
+        # Use a dummy hash that matches the hash length but is invalid for any password
+        dummy_hash = "$2b$12$dummyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        verify_password(payload.password, dummy_hash)
+        user = None  # Ensure user remains None
+    else:
+        # User exists, verify the actual password
+        if not verify_password(payload.password, user.password_hash):
+            user = None  # Treat as not found to avoid leaking existence via timing
+
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",

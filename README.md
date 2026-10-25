@@ -14,6 +14,7 @@ SQLModel, and Alembic migrations.
 - **CSRF protection** for cookie-authenticated requests.
 - **Pagination** on all list endpoints.
 - **CORS** with configurable origins.
+- **OAuth2 authentication** (Google, GitHub) via Authlib.
 - **A consistent error envelope** for HTTP and validation errors.
 - **Pydantic v2** request/response schemas with validation.
 - **SQLModel** table models over an async SQLAlchemy session.
@@ -182,6 +183,26 @@ The browser also receives the auth cookies from `/auth/login`, but Swagger UI
 does not send the `X-CSRF-Token` header, so cookie-authenticated `POST`,
 `PATCH`, and `DELETE` requests are rejected. Use the **Authorize** button
 (Bearer) while working in Swagger; the CSRF check only applies to cookie auth.
+
+### OAuth2 Authentication
+
+The application supports OAuth2 authentication with Google and GitHub providers.
+Endpoints are available under `/auth/oauth2/{provider}` and `/auth/oauth2/{provider}/callback`.
+
+To enable OAuth2, you need to set the following environment variables in your `.env` file:
+
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Google authentication
+- `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` for GitHub authentication
+
+OAuth2 login flow:
+1. User initiates login via GET `/auth/oauth2/{provider}` (e.g., `/auth/oauth2/google`)
+2. User is redirected to the provider's authentication page
+3. After successful authentication, provider redirects back to `/auth/oauth2/{provider}/callback`
+4. Application exchanges the authorization code for tokens and fetches user info
+5. If user doesn't exist, a new account is created (first user becomes admin)
+6. Application returns JWT access/refresh tokens and sets HttpOnly cookies
+
+OAuth2 users have unusable passwords (randomly generated) and can only authenticate via OAuth2.
 
 ### Example flow
 

@@ -2,8 +2,9 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import desc, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from ..models import Item
 from ..schemas.item import ItemCreate, ItemUpdate
@@ -26,7 +27,10 @@ async def list_items(
     result = await db.execute(
         select(Item)
         .filter_by(owner_id=owner_id)
-        .order_by(desc("created_at"))
+        .order_by(
+            col(Item.created_at).desc(),
+            col(Item.id).desc(),
+        )
         .limit(limit)
         .offset(offset)
     )
