@@ -89,7 +89,7 @@ async def oauth_login(
     """
     client = _get_oauth_client(provider)
     try:
-        token = await client.fetch_access_token(code, redirect_uri=redirect_uri)
+        token = await client.fetch_access_token(code=code, redirect_uri=redirect_uri)
     except OAuthError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,11 +101,11 @@ async def oauth_login(
         resp = await client.get("userinfo", token=token)
         user_info = resp.json()
         email = user_info.get("email")
-        # Google already verifies email, but we check anyway
-        if not email:
+        email_verified = user_info.get("email_verified", False)
+        if not email or not email_verified:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email not provided by Google",
+                detail="Email not provided or not verified by Google",
             )
     elif provider == "github":
         # GitHub requires a separate request for emails

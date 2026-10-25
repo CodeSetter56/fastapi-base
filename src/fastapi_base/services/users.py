@@ -19,7 +19,10 @@ async def list_users(
     total = await db.scalar(select(func.count()).select_from(User)) or 0
     result = await db.execute(
         select(User)
-        .order_by(col(User.id))
+        .order_by(
+            col(User.created_at).desc(),
+            col(User.id).desc(),
+        )
         .limit(limit)
         .offset(offset)
     )

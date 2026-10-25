@@ -49,6 +49,9 @@ async def register(
     return user
 
 
+DUMMY_PASSWORD_HASH = hash_password("dummy-timing-attack-protection-password")
+
+
 async def login(
     db: AsyncSession,
     payload: LoginRequest,
@@ -56,11 +59,9 @@ async def login(
     result = await db.execute(select(User).filter_by(email=str(payload.email)))
     user = result.scalar_one_or_none()
 
-    # Always verify password to mitigate timing attacks (use dummy hash if user not found)
+    # Always verify password to mitigate timing attacks (use valid dummy hash if user not found)
     if user is None:
-        # Use a dummy hash that matches the hash length but is invalid for any password
-        dummy_hash = "$2b$12$dummyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        verify_password(payload.password, dummy_hash)
+        verify_password(payload.password, DUMMY_PASSWORD_HASH)
         user = None  # Ensure user remains None
     else:
         # User exists, verify the actual password
