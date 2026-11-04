@@ -5,10 +5,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .cookies import ACCESS_COOKIE
+from .token.cookies import ACCESS_COOKIE
 from .db import get_session
 from .models import User, UserRole
-from .security import decode_token
+from .token.security import decode_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

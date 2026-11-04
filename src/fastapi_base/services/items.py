@@ -12,22 +12,19 @@ from ..schemas.item import ItemCreate, ItemUpdate
 
 async def list_items(
     db: AsyncSession,
-    owner_id: UUID,
     limit: int,
     offset: int,
+    owner_id: UUID | None = None,
 ) -> tuple[list[Item], int]:
-    total = (
-        await db.scalar(
-            select(func.count())
-            .select_from(Item)
-            .filter_by(owner_id=owner_id)
-        )
-        or 0
-    )
+    stmt = select(Item)
+    count_stmt = select(func.count()).select_from(Item)
+    if owner_id is not None:
+        stmt = stmt.filter_by(owner_id=owner_id)
+        count_stmt = count_stmt.filter_by(owner_id=owner_id)
+
+    total = await db.scalar(count_stmt) or 0
     result = await db.execute(
-        select(Item)
-        .filter_by(owner_id=owner_id)
-        .order_by(
+        stmt.order_by(
             col(Item.created_at).desc(),
             col(Item.id).desc(),
         )
@@ -57,9 +54,14 @@ async def _get_owned_item(
 async def get_item(
     db: AsyncSession,
     item_id: UUID,
-    owner_id: UUID,
 ) -> Item:
-    return await _get_owned_item(db, item_id, owner_id)
+    item = await db.get(Item, item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Item not found",
+        )
+    return item
 
 
 async def create_item(

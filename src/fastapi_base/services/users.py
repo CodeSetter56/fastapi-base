@@ -8,7 +8,7 @@ from sqlmodel import col
 
 from ..models import User, UserRole
 from ..schemas.user import UserUpdate
-from ..security import hash_password
+from ..token.security import hash_password
 
 
 async def list_users(

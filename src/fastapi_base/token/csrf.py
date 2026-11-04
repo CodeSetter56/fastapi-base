@@ -12,7 +12,7 @@ from .cookies import (
     REFRESH_COOKIE,
     UNSAFE_METHODS,
 )
-from .errors import error_response
+from ..errors import error_response
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):

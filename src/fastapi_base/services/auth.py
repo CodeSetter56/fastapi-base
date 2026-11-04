@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import User, UserRole
 from ..schemas.auth import LoginRequest, TokenPair
 from ..schemas.user import UserCreate
-from ..security import (
+from ..token.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -29,7 +29,6 @@ async def register(
     db: AsyncSession,
     payload: UserCreate,
 ) -> User:
-    # Bootstrap: the first account in an empty database becomes the admin.
     user_count = await db.scalar(select(func.count()).select_from(User)) or 0
     user = User(
         email=str(payload.email),

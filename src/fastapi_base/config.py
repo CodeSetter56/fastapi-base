@@ -1,4 +1,4 @@
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,13 +10,13 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@db:5432/fastapi_base",
+        default="default",
         validation_alias="DATABASE_URL",
     )
 
     # JWT
     jwt_secret: str = Field(
-        default="dev-secret-key-change-in-production",
+        default="default",
         validation_alias="JWT_SECRET",
     )
     jwt_algorithm: str = "HS256"
@@ -24,11 +24,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Cookies
-    cookie_secure: bool = False  # Set to True in production (HTTPS)
-    cookie_samesite: str | None = "lax"  # lax | strict | none
+    cookie_secure: bool = False # true during production
+    cookie_samesite: str | None = "lax" 
 
     # CORS
-    cors_origins: str = ""  # Comma-separated list of origins
+    cors_origins: str = ""  
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -36,7 +36,6 @@ class Settings(BaseSettings):
             return []
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
-    # Helper to convert sync database URL to async if needed
     @property
     def to_async_database_url(self) -> str:
         url = self.database_url

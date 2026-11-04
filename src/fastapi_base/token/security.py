@@ -4,7 +4,7 @@ from uuid import UUID
 import bcrypt
 import jwt
 
-from .config import settings
+from ..config import settings
 
 
 def hash_password(password: str) -> str:
@@ -54,7 +54,6 @@ def create_refresh_token(user_id: UUID, token_version: int) -> str:
 
 
 def decode_token(token: str) -> dict:
-    """Decode and verify a token. Raises jwt.InvalidTokenError when invalid."""
     return jwt.decode(
         token,
         settings.jwt_secret,

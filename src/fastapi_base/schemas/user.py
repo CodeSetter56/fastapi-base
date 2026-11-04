@@ -17,18 +17,10 @@ from ..models import UserRole
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
 
-
-def _validate_password_bytes(value: str) -> str:
-    if len(value.encode("utf-8")) > 72:
-        raise ValueError("password must be at most 72 bytes")
-    return value
-
-
 NormalizedEmail = Annotated[EmailStr, AfterValidator(_normalize_email)]
 Password = Annotated[
     str,
     Field(min_length=8, max_length=72),
-    AfterValidator(_validate_password_bytes),
 ]
 
 

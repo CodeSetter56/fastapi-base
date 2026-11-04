@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
+from ..token.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from ..db import get_session
 from ..deps import get_current_user
 from ..models import User

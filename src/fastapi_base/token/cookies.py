@@ -3,8 +3,8 @@ from typing import Literal, TypedDict, cast
 
 from fastapi import Response
 
-from .config import settings
-from .schemas.auth import TokenPair
+from ..config import settings
+from ..schemas.auth import TokenPair
 
 ACCESS_COOKIE = "access_token"
 REFRESH_COOKIE = "refresh_token"
