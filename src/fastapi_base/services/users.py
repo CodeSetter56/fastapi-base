@@ -51,28 +51,6 @@ def _ensure_self_or_admin(current_user: User, user_id: UUID) -> None:
         )
 
 
-async def _admin_count(db: AsyncSession) -> int:
-    return (
-        await db.scalar(
-            select(func.count())
-            .select_from(User)
-            .filter_by(role=UserRole.admin.value)
-        )
-        or 0
-    )
-
-
-async def _ensure_not_last_admin(
-    db: AsyncSession,
-    user: User,
-) -> None:
-    if user.role == UserRole.admin and await _admin_count(db) <= 1:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot remove the last admin",
-        )
-
-
 async def get_user(
     db: AsyncSession,
     user_id: UUID,
@@ -117,9 +95,6 @@ async def set_role(
     role: UserRole,
 ) -> User:
     user = await _get_user(db, user_id)
-    if user.role == UserRole.admin and role != UserRole.admin:
-        await _ensure_not_last_admin(db, user)
-
     user.role = role.value
     await db.commit()
     await db.refresh(user)
@@ -133,7 +108,6 @@ async def delete_user(
 ) -> None:
     _ensure_self_or_admin(current_user, user_id)
     user = await _get_user(db, user_id)
-    await _ensure_not_last_admin(db, user)
 
     await db.delete(user)
     await db.commit()

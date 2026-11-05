@@ -27,9 +27,6 @@ class Settings(BaseSettings):
     # OAuth
     google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
-    github_client_id: str = Field(default="", validation_alias="GITHUB_CLIENT_ID")
-    github_client_secret: str = Field(default="", validation_alias="GITHUB_CLIENT_SECRET")
-    frontend_url: str = Field(validation_alias="FRONTEND_URL")
 
     @property
     def cors_origin_list(self) -> list[str]:

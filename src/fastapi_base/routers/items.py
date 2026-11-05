@@ -16,21 +16,15 @@ router = APIRouter()
 
 @router.get("", response_model=Page[ItemOut])
 async def list_items(
+    owner_id: UUID | None = None,
     db: AsyncSession = Depends(get_session),
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ItemOut]:
-    items, total = await items_service.list_items(
-        db,
-        limit,
-        offset,
-    )
+    items, total = await items_service.list_items(db, limit, offset, owner_id=owner_id)
     return Page[ItemOut](
-        items=[ItemOut.model_validate(item) for item in items],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+        items=[ItemOut.model_validate(i) for i in items],
+        total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=ItemOut, status_code=status.HTTP_201_CREATED)
@@ -40,27 +34,6 @@ async def create_item(
     db: AsyncSession = Depends(get_session),
 ) -> Item:
     return await items_service.create_item(db, current_user.id, req)
-
-
-@router.get("/me", response_model=Page[ItemOut])
-async def list_my_items(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-) -> Page[ItemOut]:
-    items, total = await items_service.list_items(
-        db,
-        limit,
-        offset,
-        owner_id=current_user.id,
-    )
-    return Page[ItemOut](
-        items=[ItemOut.model_validate(item) for item in items],
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
 
 
 @router.get("/{item_id}", response_model=ItemOut)

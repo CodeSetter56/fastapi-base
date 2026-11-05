@@ -1,5 +1,6 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -77,55 +78,46 @@ async def google_login(request: Request) -> RedirectResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Google OAuth is not configured",
         )
+    state = secrets.token_urlsafe(32)
     redirect_uri = str(request.url_for("google_callback"))
     auth_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?"
         f"client_id={settings.google_client_id}&"
         f"redirect_uri={redirect_uri}&"
         f"response_type=code&"
-        f"scope=openid%20email%20profile"
+        f"scope=openid%20email%20profile&"
+        f"state={state}"
     )
-    return RedirectResponse(url=auth_url, status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url=auth_url, status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        "oauth_state",
+        state,
+        max_age=600,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+    return response
 
 
-@router.get("/google/callback", name="google_callback")
+@router.get("/google/callback", name="google_callback", response_model=TokenPair)
 async def google_callback(
     request: Request,
-    response: Response,
     code: str,
+    state: str | None = None,
     db: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    redirect_uri = str(request.url_for("google_callback"))
-    pair = await oauth_service.authenticate_google(db, code, redirect_uri)
-    set_auth_cookies(response, pair)
-    return RedirectResponse(url=settings.frontend_url, status_code=status.HTTP_303_SEE_OTHER)
-
-
-@router.get("/github/login", include_in_schema=True)
-async def github_login(request: Request) -> RedirectResponse:
-    if not settings.github_client_id:
+) -> JSONResponse:
+    stored_state = request.cookies.get("oauth_state")
+    if not state or not stored_state or not secrets.compare_digest(state, stored_state):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub OAuth is not configured",
+            detail="Invalid or missing OAuth state parameter",
         )
-    redirect_uri = str(request.url_for("github_callback"))
-    auth_url = (
-        f"https://github.com/login/oauth/authorize?"
-        f"client_id={settings.github_client_id}&"
-        f"redirect_uri={redirect_uri}&"
-        f"scope=user:email"
-    )
-    return RedirectResponse(url=auth_url, status_code=status.HTTP_303_SEE_OTHER)
 
-
-@router.get("/github/callback", name="github_callback")
-async def github_callback(
-    request: Request,
-    response: Response,
-    code: str,
-    db: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    redirect_uri = str(request.url_for("github_callback"))
-    pair = await oauth_service.authenticate_github(db, code, redirect_uri)
+    redirect_uri = str(request.url_for("google_callback"))
+    pair = await oauth_service.authenticate_google(db, code, redirect_uri)
+    response = JSONResponse(pair.model_dump())
     set_auth_cookies(response, pair)
-    return RedirectResponse(url=settings.frontend_url, status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie("oauth_state", path="/")
+    return response
