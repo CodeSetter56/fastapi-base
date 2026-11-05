@@ -37,7 +37,7 @@ async def get_or_create_oauth_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Inactive user",
             )
-        # Link existing account with OAuth
+        # Link existing account with OAuth only if safe (email verified by provider)
         user.oauth_provider = provider
         user.oauth_id = oauth_id
         await db.commit()
@@ -108,10 +108,18 @@ async def authenticate_google(
 
     email = userinfo.get("email")
     oauth_id = userinfo.get("sub")
+    email_verified = userinfo.get("email_verified")
+
     if not email or not oauth_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incomplete user profile from Google",
+        )
+
+    if not email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google email address is not verified",
         )
 
     user = await get_or_create_oauth_user(db, "google", str(oauth_id), email.strip().lower())
@@ -168,26 +176,30 @@ async def authenticate_github(
             )
         user_data = user_response.json()
         oauth_id = str(user_data.get("id"))
-        email = user_data.get("email")
 
-        if not email:
-            # Fetch emails endpoint if email is private
-            emails_response = await client.get(
-                "https://api.github.com/user/emails", headers=headers
-            )
-            if emails_response.status_code == 200:
-                emails_data = emails_response.json()
+        # Fetch emails to ensure we get a verified email
+        email = None
+        emails_response = await client.get(
+            "https://api.github.com/user/emails", headers=headers
+        )
+        if emails_response.status_code == 200:
+            emails_data = emails_response.json()
+            # 1. Look for primary & verified
+            for entry in emails_data:
+                if entry.get("primary") and entry.get("verified"):
+                    email = entry.get("email")
+                    break
+            # 2. If no primary+verified, look for any verified email
+            if not email:
                 for entry in emails_data:
-                    if entry.get("primary") and entry.get("verified"):
+                    if entry.get("verified"):
                         email = entry.get("email")
                         break
-                if not email and emails_data:
-                    email = emails_data[0].get("email")
 
     if not email or not oauth_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incomplete user profile or missing verified email from GitHub",
+            detail="No verified email found on GitHub account",
         )
 
     user = await get_or_create_oauth_user(db, "github", oauth_id, email.strip().lower())
