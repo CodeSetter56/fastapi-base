@@ -28,6 +28,7 @@ class UserCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: NormalizedEmail
+    username: str | None = Field(default=None, min_length=3, max_length=50)
     password: Password
 
 
@@ -35,6 +36,7 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: NormalizedEmail | None = None
+    username: str | None = Field(default=None, min_length=3, max_length=50)
     password: Password | None = None
 
     @model_validator(mode="after")
@@ -43,6 +45,8 @@ class UserUpdate(BaseModel):
             raise ValueError("at least one field must be provided")
         if "email" in self.model_fields_set and self.email is None:
             raise ValueError("email cannot be null")
+        if "username" in self.model_fields_set and self.username is None:
+            raise ValueError("username cannot be null")
         if "password" in self.model_fields_set and self.password is None:
             raise ValueError("password cannot be null")
         return self
@@ -59,6 +63,7 @@ class UserPublic(BaseModel):
 
     id: UUID
     email: EmailStr
+    username: str | None = None
     role: UserRole
     is_active: bool
     created_at: datetime

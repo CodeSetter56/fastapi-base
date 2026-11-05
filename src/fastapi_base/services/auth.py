@@ -32,6 +32,7 @@ async def register(
     user_count = await db.scalar(select(func.count()).select_from(User)) or 0
     user = User(
         email=str(payload.email),
+        username=payload.username,
         password_hash=hash_password(payload.password),
         role=UserRole.admin.value if user_count == 0 else UserRole.user.value,
     )
@@ -42,7 +43,7 @@ async def register(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email is already registered",
+            detail="Email or username is already registered",
         ) from None
     await db.refresh(user)
     return user
@@ -64,7 +65,12 @@ async def login(
         user = None  # Ensure user remains None
     else:
         # User exists, verify the actual password
-        if not verify_password(payload.password, user.password_hash):
+        password_hash = user.password_hash
+        password_valid = verify_password(
+            payload.password,
+            password_hash if password_hash is not None else DUMMY_PASSWORD_HASH,
+        )
+        if password_hash is None or not password_valid:
             user = None  # Treat as not found to avoid leaking existence via timing
 
     if user is None:

@@ -18,6 +18,9 @@ class UserRole(StrEnum):
 
 class User(SQLModel, table=True):
     __tablename__: ClassVar[str] = "users"
+    __table_args__ = (
+        Index("ix_users_oauth", "oauth_provider", "oauth_id", unique=True),
+    )
 
     id: UUID = Field(
         default_factory=uuid4,
@@ -25,7 +28,16 @@ class User(SQLModel, table=True):
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
     email: str = Field(sa_type=Text, nullable=False, unique=True)
-    password_hash: str = Field(sa_type=Text, nullable=False)
+    username: str | None = Field(
+        default=None,
+        sa_type=Text,
+        nullable=True,
+        index=True,
+        sa_column_kwargs={"unique": True},
+    )
+    password_hash: str | None = Field(default=None, sa_type=Text, nullable=True)
+    oauth_provider: str | None = Field(default=None, sa_type=Text, nullable=True)
+    oauth_id: str | None = Field(default=None, sa_type=Text, nullable=True)
     role: str = Field(
         default=UserRole.user.value,
         sa_type=Text,

@@ -9,26 +9,27 @@ class Settings(BaseSettings):
     app_name: str = "FastAPI Base"
 
     # Database
-    database_url: str = Field(
-        default="default",
-        validation_alias="DATABASE_URL",
-    )
+    database_url: str = Field(validation_alias="DATABASE_URL")
 
     # JWT
-    jwt_secret: str = Field(
-        default="default",
-        validation_alias="JWT_SECRET",
-    )
+    jwt_secret: str = Field(validation_alias="JWT_SECRET",)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
     # Cookies
     cookie_secure: bool = False # true during production
-    cookie_samesite: str | None = "lax" 
+    cookie_samesite: str | None = "lax"
 
     # CORS
-    cors_origins: str = ""  
+    cors_origins: str = ""
+
+    # OAuth
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
+    github_client_id: str = Field(default="", validation_alias="GITHUB_CLIENT_ID")
+    github_client_secret: str = Field(default="", validation_alias="GITHUB_CLIENT_SECRET")
+    frontend_url: str = Field(validation_alias="FRONTEND_URL")
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -46,4 +47,4 @@ class Settings(BaseSettings):
         return url
 
 
-settings = Settings()
+settings = Settings()  # pyright: ignore[reportCallIssue]
