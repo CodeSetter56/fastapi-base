@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from .cookies import (
+from ..token.cookies import (
     ACCESS_COOKIE,
     CSRF_COOKIE,
     CSRF_EXEMPT_PATHS,
@@ -12,7 +12,7 @@ from .cookies import (
     REFRESH_COOKIE,
     UNSAFE_METHODS,
 )
-from ..errors import error_response
+from .errors import error_response
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):

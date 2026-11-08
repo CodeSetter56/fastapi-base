@@ -49,7 +49,7 @@ class User(SQLModel, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("true")},
     )
-    token_version: int = Field(
+    token_version: int = Field( # Changing the password revokes every previously issued token.
         default=0,
         nullable=False,
         sa_column_kwargs={"server_default": text("0")},
@@ -73,7 +73,7 @@ class Item(SQLModel, table=True):
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
     owner_id: UUID = Field(
-        foreign_key="users.id",
+        foreign_key="users.id", # one-to-many relationship with User
         ondelete="CASCADE",
         nullable=False,
     )

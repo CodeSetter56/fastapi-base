@@ -7,9 +7,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
-from .token.csrf import CSRFMiddleware
+from .middleware.csrf import CSRFMiddleware
 from .db import create_engine, create_sessionmaker, get_session
-from .errors import install_error_handlers
+from .middleware.errors import install_error_handlers
 from .routers import auth, items, users
 
 

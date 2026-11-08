@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Cookies
+    cookie_samesite: str | None = "lax"
     cookie_secure: bool = False # true during production 
     cors_origins: str = ""
 
