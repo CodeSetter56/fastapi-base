@@ -33,7 +33,6 @@ async def list_users(
     )
 
 
-# Declared before /{user_id} so "me" is not parsed as a UUID.
 @router.get("/me", response_model=UserPublic)
 async def read_me(
     current_user: User = Depends(get_current_user),

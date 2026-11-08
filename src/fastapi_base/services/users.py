@@ -1,3 +1,4 @@
+from operator import is_
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -9,7 +10,6 @@ from sqlmodel import col
 from ..models import User, UserRole
 from ..schemas.user import UserUpdate
 from ..token.security import hash_password
-
 
 async def list_users(
     db: AsyncSession,
@@ -88,6 +88,23 @@ async def update_user(
     await db.refresh(user)
     return user
 
+async def _ensure_not_last_admin(db: AsyncSession, user: User) -> None:
+    """Block removing admin rights or deleting the only remaining active admin."""
+    if user.role != UserRole.admin.value or not user.is_active:
+        return
+    admin_count = await db.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(
+            col(User.role) == UserRole.admin.value,
+            col(User.is_active).is_(True),
+        )
+    )
+    if admin_count is None or admin_count <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot remove or delete the last active admin",
+        )
 
 async def set_role(
     db: AsyncSession,
@@ -95,6 +112,9 @@ async def set_role(
     role: UserRole,
 ) -> User:
     user = await _get_user(db, user_id)
+    if user.role == UserRole.admin.value and role.value != UserRole.admin.value:
+        await _ensure_not_last_admin(db, user)
+
     user.role = role.value
     await db.commit()
     await db.refresh(user)
@@ -108,6 +128,8 @@ async def delete_user(
 ) -> None:
     _ensure_self_or_admin(current_user, user_id)
     user = await _get_user(db, user_id)
+    if user.role == UserRole.admin.value:
+        await _ensure_not_last_admin(db, user)
 
     await db.delete(user)
     await db.commit()
