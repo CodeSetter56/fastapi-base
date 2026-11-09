@@ -10,7 +10,7 @@ from .config import settings
 from .middleware.csrf import CSRFMiddleware
 from .db import create_engine, create_sessionmaker, get_session
 from .middleware.errors import install_error_handlers
-from .routers import auth, items, users
+from .routers import audit, auth, bookmarks, cart, categories, items, ratings, users
 
 
 @asynccontextmanager
@@ -44,6 +44,11 @@ if settings.cors_origin_list:
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(items.router, prefix="/items", tags=["items"])
+app.include_router(categories.router, prefix="/categories", tags=["categories"])
+app.include_router(ratings.router, prefix="/items", tags=["ratings"])
+app.include_router(cart.router, prefix="/cart", tags=["cart"])
+app.include_router(bookmarks.router, prefix="/bookmarks", tags=["bookmarks"])
+app.include_router(audit.router, prefix="/admin/audit-logs", tags=["audit"])
 
 
 @app.get("/health", tags=["health"])

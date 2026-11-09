@@ -49,7 +49,7 @@ class User(SQLModel, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("true")},
     )
-    token_version: int = Field( # Changing the password revokes every previously issued token.
+    token_version: int = Field(
         default=0,
         nullable=False,
         sa_column_kwargs={"server_default": text("0")},
@@ -59,6 +59,25 @@ class User(SQLModel, table=True):
         sa_type=DateTime(timezone=True),
         nullable=False,
         index=True,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
+class Category(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "categories"
+    __table_args__ = (Index("ix_categories_slug", "slug", unique=True),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    name: str = Field(sa_type=Text, nullable=False)
+    slug: str = Field(sa_type=Text, nullable=False, unique=True)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
         sa_column_kwargs={"server_default": func.now()},
     )
 
@@ -73,9 +92,15 @@ class Item(SQLModel, table=True):
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
     owner_id: UUID = Field(
-        foreign_key="users.id", # one-to-many relationship with User
+        foreign_key="users.id",
         ondelete="CASCADE",
         nullable=False,
+    )
+    category_id: UUID | None = Field(
+        default=None,
+        foreign_key="categories.id",
+        ondelete="SET NULL",
+        nullable=True,
     )
     title: str = Field(sa_type=Text, nullable=False)
     description: str | None = Field(default=None, sa_type=Text, nullable=True)
@@ -89,5 +114,140 @@ class Item(SQLModel, table=True):
         default_factory=utc_now,
         sa_type=DateTime(timezone=True),
         nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
+class Bookmark(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "bookmarks"
+    __table_args__ = (
+        Index("ix_bookmarks_user_item", "user_id", "item_id", unique=True),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    item_id: UUID = Field(
+        foreign_key="items.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
+class Rating(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "ratings"
+    __table_args__ = (
+        Index("ix_ratings_user_item", "user_id", "item_id", unique=True),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    item_id: UUID = Field(
+        foreign_key="items.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    score: int = Field(nullable=False)  # 1 to 5
+    review_text: str | None = Field(default=None, sa_type=Text, nullable=True)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
+class CartItem(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "cart_items"
+    __table_args__ = (
+        Index("ix_cart_user_item", "user_id", "item_id", unique=True),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    item_id: UUID = Field(
+        foreign_key="items.id",
+        ondelete="CASCADE",
+        nullable=False,
+        index=True,
+    )
+    quantity: int = Field(default=1, nullable=False)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
+class AuditLog(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "audit_logs"
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    user_id: UUID | None = Field(
+        default=None,
+        foreign_key="users.id",
+        ondelete="SET NULL",
+        nullable=True,
+        index=True,
+    )
+    action: str = Field(sa_type=Text, nullable=False, index=True)
+    ip_address: str | None = Field(default=None, sa_type=Text, nullable=True)
+    details: str | None = Field(default=None, sa_type=Text, nullable=True)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        index=True,
         sa_column_kwargs={"server_default": func.now()},
     )

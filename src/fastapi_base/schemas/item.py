@@ -16,6 +16,7 @@ class ItemCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=5000)
+    category_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -36,6 +37,7 @@ class ItemUpdate(BaseModel):
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=5000)
+    category_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -66,7 +68,11 @@ class ItemOut(BaseModel):
 
     id: UUID
     owner_id: UUID
+    category_id: UUID | None
     title: str
     description: str | None
+    average_rating: float = 0.0
+    rating_count: int = 0
+    is_bookmarked: bool = False
     created_at: datetime
     updated_at: datetime
