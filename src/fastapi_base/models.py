@@ -224,30 +224,3 @@ class CartItem(SQLModel, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": func.now()},
     )
-
-
-class AuditLog(SQLModel, table=True):
-    __tablename__: ClassVar[str] = "audit_logs"
-
-    id: UUID = Field(
-        default_factory=uuid4,
-        primary_key=True,
-        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
-    )
-    user_id: UUID | None = Field(
-        default=None,
-        foreign_key="users.id",
-        ondelete="SET NULL",
-        nullable=True,
-        index=True,
-    )
-    action: str = Field(sa_type=Text, nullable=False, index=True)
-    ip_address: str | None = Field(default=None, sa_type=Text, nullable=True)
-    details: str | None = Field(default=None, sa_type=Text, nullable=True)
-    created_at: datetime = Field(
-        default_factory=utc_now,
-        sa_type=DateTime(timezone=True),
-        nullable=False,
-        index=True,
-        sa_column_kwargs={"server_default": func.now()},
-    )

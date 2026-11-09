@@ -66,7 +66,7 @@ async def create_item(
     req: ItemCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> Item:
+) -> ItemOut:
     return await items_service.create_item(db, current_user.id, req)
 
 
@@ -75,7 +75,7 @@ async def get_item(
     item_id: UUID,
     current_user: User | None = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_session),
-) -> Item:
+) -> ItemOut:
     return await items_service.get_item(db, item_id, current_user.id if current_user else None)
 
 
@@ -85,7 +85,7 @@ async def update_item(
     payload: ItemUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-) -> Item:
+) -> ItemOut:
     return await items_service.update_item(
         db,
         item_id,

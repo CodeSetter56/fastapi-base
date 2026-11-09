@@ -6,28 +6,37 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..models import Bookmark, Item, Rating
-from ..schemas.item import ItemCreate, ItemUpdate
+from ..models import Bookmark, Category, Item, Rating
+from ..schemas.item import ItemCreate, ItemOut, ItemUpdate
 
 
-async def enrich_item(db: AsyncSession, item: Item, current_user_id: UUID | None = None) -> Item:
-    # Get rating stats
+async def to_item_out(db: AsyncSession, item: Item, current_user_id: UUID | None = None) -> ItemOut:
     rating_stats = await db.execute(
-        select(func.avg(Rating.score), func.count(Rating.id)).filter_by(item_id=item.id)
+        select(func.avg(col(Rating.score)), func.count(col(Rating.id))).filter_by(item_id=item.id)
     )
     avg_score, count = rating_stats.one()
-    item.average_rating = float(avg_score) if avg_score is not None else 0.0
-    item.rating_count = int(count) if count is not None else 0
+    avg_rating = float(avg_score) if avg_score is not None else 0.0
+    rating_count = int(count) if count is not None else 0
 
-    # Get bookmark status
-    item.is_bookmarked = False
+    is_bookmarked = False
     if current_user_id is not None:
         bm = await db.execute(
             select(Bookmark).filter_by(user_id=current_user_id, item_id=item.id)
         )
-        item.is_bookmarked = bm.scalar_one_or_none() is not None
+        is_bookmarked = bm.scalar_one_or_none() is not None
 
-    return item
+    return ItemOut(
+        id=item.id,
+        owner_id=item.owner_id,
+        category_id=item.category_id,
+        title=item.title,
+        description=item.description,
+        average_rating=avg_rating,
+        rating_count=rating_count,
+        is_bookmarked=is_bookmarked,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
 
 
 async def list_items(
@@ -37,7 +46,7 @@ async def list_items(
     owner_id: UUID | None = None,
     category_id: UUID | None = None,
     current_user_id: UUID | None = None,
-) -> tuple[list[Item], int]:
+) -> tuple[list[ItemOut], int]:
     stmt = select(Item)
     count_stmt = select(func.count()).select_from(Item)
     if owner_id is not None:
@@ -59,7 +68,7 @@ async def list_items(
     items = list(result.scalars().all())
     enriched = []
     for item in items:
-        enriched.append(await enrich_item(db, item, current_user_id))
+        enriched.append(await to_item_out(db, item, current_user_id))
     return enriched, total
 
 
@@ -84,21 +93,29 @@ async def get_item(
     db: AsyncSession,
     item_id: UUID,
     current_user_id: UUID | None = None,
-) -> Item:
+) -> ItemOut:
     item = await db.get(Item, item_id)
     if item is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Item not found",
         )
-    return await enrich_item(db, item, current_user_id)
+    return await to_item_out(db, item, current_user_id)
 
 
 async def create_item(
     db: AsyncSession,
     owner_id: UUID,
     payload: ItemCreate,
-) -> Item:
+) -> ItemOut:
+    if payload.category_id is not None:
+        cat = await db.get(Category, payload.category_id)
+        if cat is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found",
+            )
+
     item = Item(
         owner_id=owner_id,
         category_id=payload.category_id,
@@ -108,7 +125,7 @@ async def create_item(
     db.add(item)
     await db.commit()
     await db.refresh(item)
-    return await enrich_item(db, item, owner_id)
+    return await to_item_out(db, item, owner_id)
 
 
 async def update_item(
@@ -116,16 +133,25 @@ async def update_item(
     item_id: UUID,
     owner_id: UUID,
     payload: ItemUpdate,
-) -> Item:
+) -> ItemOut:
     item = await _get_owned_item(db, item_id, owner_id)
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "category_id" in data and data["category_id"] is not None:
+        cat = await db.get(Category, data["category_id"])
+        if cat is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found",
+            )
+
+    for field, value in data.items():
         setattr(item, field, value)
     item.updated_at = datetime.now(UTC)
 
     await db.commit()
     await db.refresh(item)
-    return await enrich_item(db, item, owner_id)
+    return await to_item_out(db, item, owner_id)
 
 
 async def delete_item(

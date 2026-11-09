@@ -5,6 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..models import Bookmark, Item
+from ..schemas.item import ItemOut
+from .items import to_item_out
 
 
 async def list_bookmarks(
@@ -12,20 +14,23 @@ async def list_bookmarks(
     user_id: UUID,
     limit: int,
     offset: int,
-) -> tuple[list[Item], int]:
+) -> tuple[list[ItemOut], int]:
     count_stmt = select(func.count()).select_from(Bookmark).filter_by(user_id=user_id)
     total = await db.scalar(count_stmt) or 0
 
     result = await db.execute(
         select(Item)
-        .join(Bookmark, Bookmark.item_id == Item.id)
-        .filter(Bookmark.user_id == user_id)
+        .join(Bookmark, col(Bookmark.item_id) == col(Item.id))
+        .filter(col(Bookmark.user_id) == user_id)
         .order_by(col(Bookmark.created_at).desc())
         .limit(limit)
         .offset(offset)
     )
     items = list(result.scalars().all())
-    return items, total
+    enriched = []
+    for item in items:
+        enriched.append(await to_item_out(db, item, user_id))
+    return enriched, total
 
 
 async def add_bookmark(db: AsyncSession, user_id: UUID, item_id: UUID) -> None:
