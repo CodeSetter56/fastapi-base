@@ -1,6 +1,6 @@
 """add categories, ratings, cart, bookmarks
 
-Revision ID: 0003_add_categories_ratings_cart_bookmarks
+Revision ID: 0003
 Revises: 07861833af35
 Create Date: 2026-11-09 12:00:00.000000
 
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '0003_add_categories_ratings_cart_bookmarks'
+revision: str = '0003'
 down_revision: str | None = '07861833af35'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -31,7 +31,7 @@ def upgrade() -> None:
 
     # Add category_id to items
     op.add_column('items', sa.Column('category_id', sa.Uuid(), nullable=True))
-    op.create_foreign_key(None, 'items', 'categories', ['category_id'], ['id'], ondelete='SET NULL')
+    op.create_foreign_key('items_category_id_fkey', 'items', 'categories', ['category_id'], ['id'], ondelete='SET NULL')
 
     # Bookmarks table
     op.create_table(
@@ -100,7 +100,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_bookmarks_item_id'), table_name='bookmarks')
     op.drop_table('bookmarks')
 
-    op.drop_constraint(None, 'items', type_='foreignkey')
+    op.drop_constraint('items_category_id_fkey', 'items', type_='foreignkey')
     op.drop_column('items', 'category_id')
 
     op.drop_index(op.f('ix_categories_slug'), table_name='categories')

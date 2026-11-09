@@ -73,7 +73,7 @@ class Category(SQLModel, table=True):
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
     name: str = Field(sa_type=Text, nullable=False)
-    slug: str = Field(sa_type=Text, nullable=False, unique=True)
+    slug: str = Field(sa_type=Text, nullable=False)
     created_at: datetime = Field(
         default_factory=utc_now,
         sa_type=DateTime(timezone=True),
