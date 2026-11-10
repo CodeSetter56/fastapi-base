@@ -1,6 +1,6 @@
 # FastAPI Base Backend
 
-A robust, production-grade FastAPI asynchronous backend featuring SQLModel, PostgreSQL, Alembic migrations, JWT authentication with token version revocation, Google OAuth2 login, role-based access control (RBAC) with last admin protection, bookmarks, ratings & reviews, shopping cart, and categories & tags.
+A robust, production-grade FastAPI asynchronous backend featuring SQLModel, PostgreSQL, Alembic migrations, JWT authentication with token version revocation, Google OAuth2 login, role-based access control (RBAC) with last admin protection, bookmarks, ratings & reviews, shopping cart, categories & tags, and S3 object storage (MinIO / Cloudflare R2).
 
 ## Features
 
@@ -15,6 +15,7 @@ A robust, production-grade FastAPI asynchronous backend featuring SQLModel, Post
   - **Bookmarks / Saved Items**: Users can bookmark/save items.
   - **Ratings & Reviews**: Users can rate and review items (1-5 stars, one rating per user per item with average score calculation).
   - **Shopping Cart**: Add, update quantity, remove, and clear cart items with quantity aggregation and total summary.
+  - **Storage Service**: S3-compatible object storage (MinIO locally, Cloudflare R2 in production) via `aioboto3` with automatic image thumbnail generation and presigned URLs.
 
 ## Setup & Running
 

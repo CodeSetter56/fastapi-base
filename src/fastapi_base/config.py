@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
 
+    # S3 / MinIO Storage
+    s3_endpoint_url: str | None = Field(default=None, validation_alias="S3_ENDPOINT_URL")
+    s3_access_key_id: str = Field(default="minioadmin", validation_alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str = Field(default="minioadmin", validation_alias="S3_SECRET_ACCESS_KEY")
+    s3_bucket_name: str = Field(default="uploads", validation_alias="S3_BUCKET_NAME")
+    s3_region_name: str = Field(default="us-east-1", validation_alias="S3_REGION_NAME")
+
     @property
     def cors_origin_list(self) -> list[str]:
         if not self.cors_origins:
