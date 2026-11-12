@@ -31,3 +31,58 @@ A robust, production-grade FastAPI asynchronous backend featuring SQLModel, Post
    ```bash
    uvicorn fastapi_base.main:app --reload
    ```
+
+---
+
+## Database Schema & Entity Relationship Diagram
+
+### Entity Relationship Diagram (ERD)
+
+```text
+┌────────────────────────────────────────────────────────┐
+│                        users                           │
+├────────────────────────────────────────────────────────┤
+│ PK id (UUID)                                           │
+│    email (Text, Unique)                                │
+│    username (Text, Unique)                             │
+│    password_hash (Text)                                │
+│    role (Text: 'user' | 'admin')                       │
+│    is_active (Boolean)                                 │
+│    token_version (Integer)                             │
+└───────────┬──────────────┬──────────────┬──────────────┘
+            │ 1            │ 1            │ 1
+            │              │              │
+      N     │        N     │        N     │        N
+┌───────────▼──┐   ┌───────▼──────┐   ┌───▼──────────┐   ┌──────────────────────┐
+│    items     │   │  bookmarks   │   │   ratings    │   │      cart_items      │
+├──────────────┤   ├──────────────┤   ├──────────────┤   ├──────────────────────┤
+│ PK id        │   │ PK id        │   │ PK id        │   │ PK id                │
+│ FK owner_id  │   │ FK user_id   │   │ FK user_id   │   │ FK user_id           │
+│ FK cat_id    │   │ FK item_id   │   │ FK item_id   │   │ FK item_id           │
+└───────┬──────┘   └──────────────┘   └──────────────┘   │ quantity (Int)       │
+        │                                                └──────────────────────┘
+        │ N
+┌───────▼──────┐
+│  categories  │
+├──────────────┤
+│ PK id        │
+│    name      │
+│    slug      │
+└──────────────┘
+
+┌────────────────────────────────────────────────────────┐
+│                    file_attachments                    │
+├────────────────────────────────────────────────────────┤
+│ PK id (UUID)                                           │
+│    owner_type (Text: 'user' | 'item')                  │
+│    owner_id (UUID)                                     │
+│    label (Text: 'avatar' | 'gallery' etc.)             │
+│    file_key (Text)                                     │
+│    thumb_key (Text)                                    │
+│    filename (Text)                                     │
+│    content_type (Text)                                 │
+│    size_bytes (Integer)                                │
+│    uploaded_by (UUID)                                  │
+└────────────────────────────────────────────────────────┘
+```
+

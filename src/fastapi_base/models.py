@@ -188,6 +188,34 @@ class Rating(SQLModel, table=True):
     )
 
 
+class FileAttachment(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "file_attachments"
+    __table_args__ = (
+        Index("ix_file_attachments_owner", "owner_type", "owner_id"),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        sa_column_kwargs={"server_default": text("gen_random_uuid()")},
+    )
+    owner_type: str = Field(sa_type=Text, nullable=False)  # "user", "item", etc.
+    owner_id: UUID = Field(nullable=False)
+    label: str | None = Field(default=None, sa_type=Text, nullable=True)  # "avatar", "cover", "gallery", etc.
+    file_key: str = Field(sa_type=Text, nullable=False)
+    thumb_key: str | None = Field(default=None, sa_type=Text, nullable=True)
+    filename: str = Field(sa_type=Text, nullable=False)
+    content_type: str = Field(sa_type=Text, nullable=False)
+    size_bytes: int = Field(nullable=False)
+    uploaded_by: UUID = Field(nullable=False)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+        sa_column_kwargs={"server_default": func.now()},
+    )
+
+
 class CartItem(SQLModel, table=True):
     __tablename__: ClassVar[str] = "cart_items"
     __table_args__ = (

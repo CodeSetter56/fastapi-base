@@ -2,9 +2,15 @@ import io
 import mimetypes
 import uuid
 from typing import Any, AsyncContextManager, cast
+
 import aioboto3
 from PIL import Image
+from sqlmodel import col
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from fastapi_base.config import settings
+from fastapi_base.models import FileAttachment
 
 
 class StorageService:
@@ -46,9 +52,15 @@ class StorageService:
                 except Exception:
                     pass  # Bucket might already exist or be owned by us
 
-    async def upload_file(
-        self, file_content: bytes, original_filename: str, content_type: str | None = None
+    # ── S3 operations ──────────────────────────────────────────────
+
+    async def upload_to_s3(
+        self,
+        file_content: bytes,
+        original_filename: str,
+        content_type: str | None = None,
     ) -> dict[str, Any]:
+        """Upload a file to S3 and return metadata dict (no DB write)."""
         await self.ensure_bucket_exists()
 
         if not content_type:
@@ -56,11 +68,11 @@ class StorageService:
             content_type = content_type or "application/octet-stream"
 
         file_id = uuid.uuid4()
-        ext = original_filename.split(".")[-1] if "." in original_filename else "bin"
         file_key = f"uploads/{file_id}/{original_filename}"
         thumb_key: str | None = None
+        thumb_content: bytes | None = None
 
-        # Check if file is an image and generate thumbnail if so
+        # Generate thumbnail for images
         is_image = content_type.startswith("image/")
         if is_image:
             try:
@@ -75,16 +87,13 @@ class StorageService:
                 is_image = False
 
         async with self._get_client() as client:
-            # Upload original
             await client.put_object(
                 Bucket=self.bucket_name,
                 Key=file_key,
                 Body=file_content,
                 ContentType=content_type,
             )
-
-            # Upload thumbnail if generated
-            if is_image and thumb_key:
+            if is_image and thumb_key and thumb_content:
                 await client.put_object(
                     Bucket=self.bucket_name,
                     Key=thumb_key,
@@ -93,13 +102,11 @@ class StorageService:
                 )
 
         return {
-            "file_id": str(file_id),
             "file_key": file_key,
             "thumb_key": thumb_key,
             "filename": original_filename,
             "content_type": content_type,
             "size_bytes": len(file_content),
-            "is_image": is_image,
         }
 
     async def generate_presigned_url(self, file_key: str, expiration: int = 3600) -> str:
@@ -111,12 +118,70 @@ class StorageService:
             )
             return url
 
-    async def delete_file(self, file_key: str) -> None:
+    async def delete_from_s3(self, file_key: str) -> None:
         async with self._get_client() as client:
             try:
                 await client.delete_object(Bucket=self.bucket_name, Key=file_key)
             except Exception:
                 pass
+
+    # ── DB + S3 combined operations ────────────────────────────────
+
+    async def attach_file(
+        self,
+        db: AsyncSession,
+        *,
+        file_content: bytes,
+        original_filename: str,
+        content_type: str | None,
+        owner_type: str,
+        owner_id: uuid.UUID,
+        uploaded_by: uuid.UUID,
+        label: str | None = None,
+    ) -> FileAttachment:
+        """Upload to S3 and create a FileAttachment row."""
+        meta = await self.upload_to_s3(file_content, original_filename, content_type)
+
+        attachment = FileAttachment(
+            owner_type=owner_type,
+            owner_id=owner_id,
+            label=label,
+            file_key=meta["file_key"],
+            thumb_key=meta["thumb_key"],
+            filename=meta["filename"],
+            content_type=meta["content_type"],
+            size_bytes=meta["size_bytes"],
+            uploaded_by=uploaded_by,
+        )
+        db.add(attachment)
+        await db.commit()
+        await db.refresh(attachment)
+        return attachment
+
+    async def list_attachments(
+        self,
+        db: AsyncSession,
+        *,
+        owner_type: str,
+        owner_id: uuid.UUID,
+    ) -> list[FileAttachment]:
+        result = await db.execute(
+            select(FileAttachment)
+            .where(col(FileAttachment.owner_type == owner_type) & col(FileAttachment.owner_id == owner_id))
+            .order_by(col(FileAttachment.created_at))
+        )
+        return list(result.scalars().all())
+
+    async def get_attachment(self, db: AsyncSession, attachment_id: uuid.UUID) -> FileAttachment | None:
+        return await db.get(FileAttachment, attachment_id)
+
+    async def delete_attachment(self, db: AsyncSession, attachment: FileAttachment) -> None:
+        """Delete from S3 and remove the DB row."""
+        await self.delete_from_s3(attachment.file_key)
+        if attachment.thumb_key:
+            await self.delete_from_s3(attachment.thumb_key)
+        await db.delete(attachment)
+        await db.commit()
 
 
 storage_service = StorageService()
