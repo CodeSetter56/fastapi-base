@@ -167,7 +167,10 @@ class StorageService:
     ) -> list[FileAttachment]:
         result = await db.execute(
             select(FileAttachment)
-            .where(col(FileAttachment.owner_type == owner_type) & col(FileAttachment.owner_id == owner_id))
+            .where(
+                col(FileAttachment.owner_type) == owner_type,
+                col(FileAttachment.owner_id) == owner_id,
+            )
             .order_by(col(FileAttachment.created_at))
         )
         return list(result.scalars().all())

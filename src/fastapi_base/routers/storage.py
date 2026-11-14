@@ -20,7 +20,6 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 def _sanitize_filename(filename: str) -> str:
     """Remove path traversal and risky characters from filename."""
     base = os.path.basename(filename)
-    # Keep alphanumeric, dash, underscore, dot
     clean = re.sub(r"[^a-zA-Z0-9._-]", "_", base)
     return clean or "file"
 
@@ -35,6 +34,7 @@ async def _enrich(attachment, *, include_urls: bool = True) -> FileAttachmentOut
     return data
 
 
+# ── Upload ──────────────────────────────────────────────────────
 
 @router.post(
     "/upload/{owner_type}/{owner_id}",
@@ -70,9 +70,13 @@ async def upload_file(
     if not file.filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
+    if file.content_type and file.content_type.startswith("image/"):
+        if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise HTTPException(status_code=400, detail="Only JPEG, PNG and WEBP images are allowed")
+
     safe_filename = _sanitize_filename(file.filename)
 
-    content = await file.read()
+    content = await file.read(MAX_FILE_SIZE + 1)
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     if len(content) > MAX_FILE_SIZE:
@@ -91,6 +95,24 @@ async def upload_file(
     return await _enrich(attachment)
 
 
+# ── Get presigned URL for a single attachment (Declared BEFORE list_files) ──
+
+@router.get(
+    "/files/{attachment_id}/url",
+    response_model=FileAttachmentOut,
+)
+async def get_file_url(
+    attachment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    attachment = await storage_service.get_attachment(db, attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    return await _enrich(attachment)
+
+
+# ── List files for an owner ────────────────────────────────────
 
 @router.get(
     "/files/{owner_type}/{owner_id}",
@@ -119,22 +141,7 @@ async def list_files(
     return [await _enrich(a) for a in attachments]
 
 
-
-@router.get(
-    "/files/{attachment_id}/url",
-    response_model=FileAttachmentOut,
-)
-async def get_file_url(
-    attachment_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-):
-    attachment = await storage_service.get_attachment(db, attachment_id)
-    if not attachment:
-        raise HTTPException(status_code=404, detail="Attachment not found")
-    return await _enrich(attachment)
-
-
+# ── Delete ─────────────────────────────────────────────────────
 
 @router.delete(
     "/files/{attachment_id}",
