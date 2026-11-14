@@ -100,4 +100,4 @@ async def delete_item(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> None:
-    await items_service.delete_item(db, item_id, current_user.id)
+    await items_service.delete_item(db, item_id, current_user.id, current_user.role == "admin")

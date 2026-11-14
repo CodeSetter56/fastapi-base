@@ -10,6 +10,7 @@ from sqlmodel import col
 from ..models import User, UserRole
 from ..schemas.user import UserUpdate
 from ..token.security import hash_password
+from fastapi_base.services.storage import storage_service
 
 async def list_users(
     db: AsyncSession,
@@ -130,6 +131,10 @@ async def delete_user(
     user = await _get_user(db, user_id)
     if user.role == UserRole.admin.value:
         await _ensure_not_last_admin(db, user)
+
+    attachments = await storage_service.list_attachments(db, owner_type="user", owner_id=user_id)
+    for att in attachments:
+        await storage_service.delete_attachment(db, att)
 
     await db.delete(user)
     await db.commit()

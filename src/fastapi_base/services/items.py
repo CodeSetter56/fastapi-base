@@ -8,6 +8,7 @@ from sqlmodel import col
 
 from ..models import Bookmark, Category, Item, Rating
 from ..schemas.item import ItemCreate, ItemOut, ItemUpdate
+from fastapi_base.services.storage import storage_service
 
 
 async def to_item_out(db: AsyncSession, item: Item, current_user_id: UUID | None = None) -> ItemOut:
@@ -158,7 +159,21 @@ async def delete_item(
     db: AsyncSession,
     item_id: UUID,
     owner_id: UUID,
+    is_admin: bool = False,
 ) -> None:
-    item = await _get_owned_item(db, item_id, owner_id)
+    if is_admin:
+        item = await db.get(Item, item_id)
+        if item is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item not found",
+            )
+    else:
+        item = await _get_owned_item(db, item_id, owner_id)
+
+    attachments = await storage_service.list_attachments(db, owner_type="item", owner_id=item_id)
+    for att in attachments:
+        await storage_service.delete_attachment(db, att)
+
     await db.delete(item)
     await db.commit()
