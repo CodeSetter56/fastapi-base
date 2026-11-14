@@ -15,6 +15,7 @@ from fastapi_base.services.storage import storage_service
 router = APIRouter(prefix="/storage", tags=["Storage"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 def _sanitize_filename(filename: str) -> str:
@@ -71,7 +72,7 @@ async def upload_file(
         raise HTTPException(status_code=400, detail="Invalid filename")
 
     if file.content_type and file.content_type.startswith("image/"):
-        if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        if file.content_type not in ALLOWED_IMAGE_TYPES:
             raise HTTPException(status_code=400, detail="Only JPEG, PNG and WEBP images are allowed")
 
     safe_filename = _sanitize_filename(file.filename)
@@ -82,16 +83,20 @@ async def upload_file(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File too large (max 10MB)")
 
-    attachment = await storage_service.attach_file(
-        db,
-        file_content=content,
-        original_filename=safe_filename,
-        content_type=file.content_type,
-        owner_type=owner_type,
-        owner_id=owner_id,
-        uploaded_by=current_user.id,
-        label=label,
-    )
+    try:
+        attachment = await storage_service.attach_file(
+            db,
+            file_content=content,
+            original_filename=safe_filename,
+            content_type=file.content_type,
+            owner_type=owner_type,
+            owner_id=owner_id,
+            uploaded_by=current_user.id,
+            label=label,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     return await _enrich(attachment)
 
 
@@ -109,6 +114,15 @@ async def get_file_url(
     attachment = await storage_service.get_attachment(db, attachment_id)
     if not attachment:
         raise HTTPException(status_code=404, detail="Attachment not found")
+
+    if current_user.role != "admin" and attachment.uploaded_by != current_user.id:
+        if attachment.owner_type == "user" and attachment.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this file")
+        elif attachment.owner_type == "item":
+            item = await db.get(Item, attachment.owner_id)
+            if item and item.owner_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Not authorized to access this file")
+
     return await _enrich(attachment)
 
 

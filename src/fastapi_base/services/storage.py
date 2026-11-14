@@ -72,10 +72,12 @@ class StorageService:
         thumb_key: str | None = None
         thumb_content: bytes | None = None
 
-        # Generate thumbnail for images
-        is_image = content_type.startswith("image/")
+        ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+        is_image = content_type in ALLOWED_IMAGE_TYPES
         if is_image:
             try:
+                img = Image.open(io.BytesIO(file_content))
+                img.verify()
                 img = Image.open(io.BytesIO(file_content))
                 img.thumbnail((300, 300))
                 thumb_io = io.BytesIO()
@@ -84,7 +86,9 @@ class StorageService:
                 thumb_content = thumb_io.getvalue()
                 thumb_key = f"uploads/{file_id}/thumb_{original_filename}"
             except Exception:
-                is_image = False
+                raise ValueError("Invalid image file format")
+        elif content_type and content_type.startswith("image/"):
+            raise ValueError("Only JPEG, PNG and WEBP images are allowed")
 
         async with self._get_client() as client:
             await client.put_object(
