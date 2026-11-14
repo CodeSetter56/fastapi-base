@@ -10,7 +10,7 @@ from .config import settings
 from .middleware.csrf import CSRFMiddleware
 from .db import create_engine, create_sessionmaker, get_session
 from .middleware.errors import install_error_handlers
-from .routers import auth, bookmarks, cart, categories, items, ratings, storage, users
+from .routers import auth, bookmarks, cart, categories, comments, items, notifications, ratings, storage, users
 
 
 @asynccontextmanager
@@ -48,6 +48,8 @@ app.include_router(categories.router, prefix="/categories", tags=["categories"])
 app.include_router(ratings.router, prefix="/items", tags=["ratings"])
 app.include_router(cart.router, prefix="/cart", tags=["cart"])
 app.include_router(bookmarks.router, prefix="/bookmarks", tags=["bookmarks"])
+app.include_router(comments.router, tags=["comments"])
+app.include_router(notifications.router, tags=["notifications"])
 app.include_router(storage.router)
 
 
